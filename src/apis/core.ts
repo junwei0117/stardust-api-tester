@@ -1,30 +1,17 @@
-import {
-  ED25519_ADDRESS_TYPE,
-  SIGNATURE_UNLOCK_TYPE,
-  ED25519_SIGNATURE_TYPE,
-  TRANSACTION_ESSENCE_TYPE,
-  TRANSACTION_PAYLOAD_TYPE,
-  DEFAULT_PROTOCOL_VERSION,
-  TransactionHelper,
-  BASIC_OUTPUT_TYPE,
-  ADDRESS_UNLOCK_CONDITION_TYPE,
-  ITransactionEssence,
-  OutputTypes,
-} from "@iota/iota.js";
-import { Converter } from "@iota/util.js";
-import { Ed25519 } from "@iota/crypto.js";
+import { TAGGED_DATA_PAYLOAD_TYPE } from "@iota/iota.js";
 import axios from "axios";
-import { HORNET_API_ENDPOINT } from "../config"
-import fs from "fs"
+import { API_ENDPOINT } from "../config"
+import { logger } from "../logger";
+import * as crypto from "crypto"
 
 export const isNodeHealth = async () => {
-  const endpoint = `${HORNET_API_ENDPOINT}/health`
+  const endpoint = `${API_ENDPOINT}/health`
 
-  console.log(`GET ${endpoint}`)
-  
   try {
     const headers = { "Accept-Encoding": "deflate" }
     const response = await axios.get(endpoint, {headers})
+
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
 
     if (response.status == 200) {
       return true
@@ -32,130 +19,49 @@ export const isNodeHealth = async () => {
       return false
     }
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getNodeInfo = async ()  => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/info`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/info`
 
   try {
     const response = await axios.get(endpoint)
 
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
+    
     return response.data
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getTips = async () => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/tips`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/tips`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const submitBlock = async (receiverCount: number, amount: number, nodeInfo: any) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/blocks`
-
-  console.log(`POST ${endpoint}`)
-
-  const wallets = JSON.parse(fs.readFileSync('./wallets.json', 'utf8'));
-  const senderWallet = wallets[Math.floor(Math.random() * wallets.length)];
-  const senderOutputIds = (await axios.get(`${HORNET_API_ENDPOINT}/api/indexer/v1/outputs/basic?address=${senderWallet.address.inBech32}`)).data
-
-  let senderInputs = [];
-  let senderOutputs = [];
-  let senderBalance = 0;
-  for (let i = 0; i < senderOutputIds.items.length; i++) {
-    const senderOutput = (await axios.get(`${HORNET_API_ENDPOINT}/api/core/v2/outputs/${senderOutputIds.items[i]}`)).data
-
-    if (!senderOutput.metadata.isSpent && senderOutput.output.amount > amount * receiverCount) {
-      senderInputs.push(TransactionHelper.inputFromOutputId(senderOutputIds.items[i]));
-      senderBalance += +senderOutput.output.amount;
-      senderOutputs.push(senderOutput.output);
-    }
-  }
-
-  let txOutputs: OutputTypes[] = [];
-  for (let i = 0; i < receiverCount; i++) {
-    const receiverWallet = wallets[Math.floor(Math.random() * wallets.length)];
-    const output: OutputTypes = {
-      type: BASIC_OUTPUT_TYPE,
-      amount: amount.toString(),
-      nativeTokens: [],
-      unlockConditions: [
-        {
-          type: ADDRESS_UNLOCK_CONDITION_TYPE,
-          address: {
-            type: ED25519_ADDRESS_TYPE,
-            pubKeyHash: receiverWallet.address.inHex,
-          },
-        },
-      ],
-      features: [],
-    };
-
-    txOutputs.push(output);
-  }
-
-  const senderRemainderOutput: OutputTypes = {
-    type: BASIC_OUTPUT_TYPE,
-    amount: (senderBalance - amount * receiverCount).toString(),
-    nativeTokens: [],
-    unlockConditions: [
-      {
-        type: ADDRESS_UNLOCK_CONDITION_TYPE,
-        address: {
-          type: ED25519_ADDRESS_TYPE,
-          pubKeyHash: senderWallet.address.inHex,
-        },
-      },
-    ],
-    features: [],
-  };
-
-  txOutputs.push(senderRemainderOutput);
-
-  const inputsCommitment = TransactionHelper.getInputsCommitment(senderOutputs);
-  const txEssence: ITransactionEssence = {
-    type: TRANSACTION_ESSENCE_TYPE,
-    networkId: TransactionHelper.networkIdFromNetworkName(nodeInfo.protocol.networkName),
-    inputs: senderInputs,
-    outputs: txOutputs,
-    inputsCommitment,
-  };
-
-  const txEssenceHash = TransactionHelper.getTransactionEssenceHash(txEssence);
-  let unlock = {
-    type: SIGNATURE_UNLOCK_TYPE,
-    signature: {
-      type: ED25519_SIGNATURE_TYPE,
-      publicKey: Converter.bytesToHex(Converter.hexToBytes(senderWallet.keyPair.publicKey), true),
-      signature: Converter.bytesToHex(Ed25519.sign(Converter.hexToBytes(senderWallet.keyPair.privateKey), txEssenceHash), true),
+  const endpoint = `${API_ENDPOINT}/api/core/v2/blocks`
+  const payload = JSON.stringify({
+    protocolVersion: 2,
+    payload: {
+      type: TAGGED_DATA_PAYLOAD_TYPE,
+      tag: `0x${Buffer.from(crypto.randomBytes(63)).toString("hex")}`,
+      data: `0x${Buffer.from(crypto.randomBytes(32489)).toString("hex")}`
     },
-  };
-
-  const txPayload = {
-    type: TRANSACTION_PAYLOAD_TYPE,
-    essence: txEssence,
-    unlocks: [unlock],
-  };
-  
-  const payload = {
-    protocolVersion: DEFAULT_PROTOCOL_VERSION,
-    payload: txPayload,
     nonce: "0",
-  };
+  });
 
   const headers = {
     "Content-Type": "application/json",
@@ -163,165 +69,159 @@ export const submitBlock = async (receiverCount: number, amount: number, nodeInf
 
   try {
     const response = await axios.post(`${endpoint}`, payload, {headers})
-    
-    return {blockId: response.data.blockId, outputIds: senderOutputIds}
+
+    logger.log(`info`, `Core-API POST ${endpoint} ok`)
+    logger.log(`debug`, `Core-API POST ${endpoint} ok response ${JSON.stringify(response.data)}`)
+
+    return response.data.blockId
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    console.log(`Core-API POST ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getBlockById = async (blockId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/blocks/${blockId}`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/blocks/${blockId}`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getBlockMetaDataById = async (blockId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/blocks/${blockId}/metadata`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/blocks/${blockId}/metadata`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getOutputById = async (outputId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/outputs/${outputId}`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/outputs/${outputId}`
 
   try {
     const response = await axios.get(endpoint)
 
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
+
     return response.data
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getOutputMetadataById = async (outputId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/outputs/${outputId}/metadata`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/outputs/${outputId}/metadata`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getReceipts = async () => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/receipts`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/receipts`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getReceiptsByIndex = async (index: number) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/receipts/${index}`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/receipts/${index}`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getTreasury = async () => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/treasury`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/treasury`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getMilestoneById = async (milestoneId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/milestones/${milestoneId}`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/milestones/${milestoneId}`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 
 export const getMilestoneByIndex = async (index: number) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/milestones/by-index/${index}`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/milestones/by-index/${index}`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getUTXOChangeByMilestoneId = async (milestoneId: string) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/milestones/${milestoneId}/utxo-changes`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/milestones/${milestoneId}/utxo-changes`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 
 export const getUTXOChangeByMilestoneIndex = async (index: number) => {
-  const endpoint = `${HORNET_API_ENDPOINT}/api/core/v2/milestones/by-index/${index}/utxo-changes`
-
-  console.log(`GET ${endpoint}`)
+  const endpoint = `${API_ENDPOINT}/api/core/v2/milestones/by-index/${index}/utxo-changes`
 
   try {
     const response = await axios.get(endpoint)
 
-    return response.data
+    logger.log(`info`, `Core-API GET ${endpoint} ok`)
+    logger.log(`debug`, `Core-API GET ${endpoint} ok response ${JSON.stringify(response.data)}`)
   } catch (error: any) {
-    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
+    logger.log(`error`, `Core-API GET ${endpoint} failed / reason: ${error.code} response: ${JSON.stringify(error.response.data)}`)
   }
 }
 

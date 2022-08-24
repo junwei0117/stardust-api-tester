@@ -1,54 +1,120 @@
 import * as core from "./src/apis/core"
+import * as indexer from "./src/apis/indexer"
+import * as explorer from "./src/apis/explorer"
+import { SPAMMER_ADDRESS, ENABLE_EXPLORER } from "./src/config"
+import { Converter } from "@iota/util.js";
+import { ALIAS_ADDRESS_TYPE, Bech32Helper, TransactionHelper } from "@iota/iota.js";
+import { logger } from "./src/logger"
 
-const run = async () => {
+const doCoreAPITest = async () => {
+  do {
+      try {
+        const address = SPAMMER_ADDRESS[Math.floor(Math.random() * SPAMMER_ADDRESS.length)]
+
+        await core.isNodeHealth()
+        const nodeInfo = await core.getNodeInfo()
+        await core.getTips()
+        const blockId = await core.submitBlock(1, 213000, nodeInfo)
+        await core.getBlockById(blockId)
+        await core.getBlockMetaDataById(blockId)
+        const basicOutputs = await indexer.getBasicOutputs(address)
+        await core.getOutputById(basicOutputs.items[0])
+        await core.getOutputMetadataById(basicOutputs.items[0])
+        await core.getReceipts()
+        await core.getReceiptsByIndex(nodeInfo.status.confirmedMilestone.index)
+        await core.getTreasury()
+        await core.getMilestoneById(nodeInfo.status.confirmedMilestone.milestoneId)
+        await core.getMilestoneByIndex(nodeInfo.status.confirmedMilestone.index)
+        await core.getUTXOChangeByMilestoneId(nodeInfo.status.confirmedMilestone.milestoneId)
+        await core.getUTXOChangeByMilestoneIndex(nodeInfo.status.confirmedMilestone.index)
+      } catch (error) {
+        logger.log(`error`, error)
+      }
+  } while (true)
+}
+
+const doIndexerAPITest = async () => {
+  const nodeInfo = await core.getNodeInfo()
+
   do {
     try {
-      const isNodeHealth = await core.isNodeHealth()
-      // console.log(`isNodeHealth: ${isNodeHealth}`)
+      const address = SPAMMER_ADDRESS[Math.floor(Math.random() * SPAMMER_ADDRESS.length)]
 
+      await indexer.getBasicOutputs(address)
+      const aliasOutputIDs = await indexer.getAliasOutputs(address)
+
+      if (aliasOutputIDs?.items.length > 0) {
+        for (let i = 0; i < aliasOutputIDs?.items.length; i++) {
+          const outputID = aliasOutputIDs?.items[i]
+          const type = outputID.substring(66, 70)
+          let aliasID, aliasAddress, foundryOutputIDs, output
+          switch (type) {
+            case "0000":
+              output = await core.getOutputById(outputID.substring(0, 66))
+              aliasID = output.output.aliasId
+              if (aliasID == "0x0000000000000000000000000000000000000000000000000000000000000000") {
+                aliasID = TransactionHelper.resolveIdFromOutputId(outputID)
+              }
+              await indexer.getAliasOutputsById(aliasID)
+              aliasAddress = Bech32Helper.toBech32(ALIAS_ADDRESS_TYPE, Converter.hexToBytes(aliasID), nodeInfo.protocol.bech32Hrp)
+              foundryOutputIDs = await indexer.getFoundryOutputs(aliasAddress)
+              break;
+            case "0200":
+              output = await core.getOutputById(outputID)
+              aliasID = output.output.aliasId
+              await indexer.getAliasOutputsById(aliasID)
+              aliasAddress = Bech32Helper.toBech32(ALIAS_ADDRESS_TYPE, Converter.hexToBytes(aliasID), nodeInfo.protocol.bech32Hrp)
+              foundryOutputIDs = await indexer.getFoundryOutputs(aliasAddress)
+              break;
+            default:
+              break;
+          }
+        }
+      }
+      const nftOutputIDs = await indexer.getNFTOutputs(address)
+      if (nftOutputIDs?.items.length > 0) {
+        for (let i = 0; i < nftOutputIDs?.items.length; i++) {
+          const outputID = nftOutputIDs?.items[i]
+          const type = outputID.substring(66, 70)
+          let output, nftID
+          switch (type) {
+            case "0000":
+              output = await core.getOutputById(outputID.substring(0, 66))
+              nftID = output.output.nftId
+              if (nftID == "0x0000000000000000000000000000000000000000000000000000000000000000") {
+                nftID = TransactionHelper.resolveIdFromOutputId(outputID)
+              }
+              await indexer.getNFTOutputsById(nftID)
+              break;
+              default:
+                break;
+          }
+        }
+      }
+    } catch {}
+  } while (true)
+}
+
+const doExploreAPITest = async () => {
+  do {
+    try {
+      const address = SPAMMER_ADDRESS[Math.floor(Math.random() * SPAMMER_ADDRESS.length)]
       const nodeInfo = await core.getNodeInfo()
-      // console.log(`nodeInfo: ${JSON.stringify(nodeInfo, null, 4)}`)
 
-      const tips = await core.getTips()
-      // console.log(`tips: ${JSON.stringify(tips, null, 4)}`)
-
-      const blockResp = await core.submitBlock(1, 213000, nodeInfo)
-      // console.log(`blockResp: ${JSON.stringify(blockResp, null, 4)}`)
-
-      const block = await core.getBlockById(blockResp?.blockId)
-      // console.log(`block: ${JSON.stringify(block, null, 4)}`)
-
-      const blockMetaData = await core.getBlockMetaDataById(blockResp?.blockId)
-      // console.log(`blockMetaData: ${JSON.stringify(blockMetaData, null, 4)}`)
-
-      const output = await core.getOutputById(blockResp?.outputIds.items[0])
-      // console.log(`output: ${JSON.stringify(output, null, 4)}`)
-
-      const outputMetaData = await core.getOutputMetadataById(blockResp?.outputIds.items[0])
-      // console.log(`outputMetaData: ${JSON.stringify(outputMetaData, null, 4)}`)
-
-      let receipts = await core.getReceipts()
-      // console.log(`receipts: ${JSON.stringify(receipts, null, 4)}`)
-
-      receipts = await core.getReceiptsByIndex(nodeInfo.status.confirmedMilestone.index)
-      // console.log(`receipts: ${JSON.stringify(receipts, null, 4)}`)
-
-      const treasury = await core.getTreasury()
-      // console.log(`treasury: ${JSON.stringify(treasury, null, 4)}`)
-
-      let milestone = await core.getMilestoneById(nodeInfo.status.confirmedMilestone.milestoneId)
-      // console.log(`milestone: ${JSON.stringify(milestone, null, 4)}`)
-
-      milestone = await core.getMilestoneByIndex(nodeInfo.status.confirmedMilestone.index)
-      // console.log(`milestone: ${JSON.stringify(milestone, null, 4)}`)
-
-      let utxoChanges = await core.getUTXOChangeByMilestoneId(nodeInfo.status.confirmedMilestone.milestoneId)
-      // console.log(`utxoChanges: ${JSON.stringify(utxoChanges, null, 4)}`)
-
-      utxoChanges = await core.getUTXOChangeByMilestoneIndex(nodeInfo.status.confirmedMilestone.index)
-      // console.log(`utxoChanges: ${JSON.stringify(utxoChanges, null, 4)}`)
+      await explorer.getBalance(address)
+      // await explorer.getBlock(explorerBlockId)
+      await explorer.getLedgerByAddress(address)
+      await explorer.getLedgerByMilestoneId(nodeInfo.status.confirmedMilestone.milestoneId)
     } catch (error) {}
   } while (true)
+}
+
+const run = async () => {
+  try {
+    doCoreAPITest()
+    doIndexerAPITest()
+    ENABLE_EXPLORER ? doExploreAPITest() : null
+  } catch {}   
 }
 
 run()
