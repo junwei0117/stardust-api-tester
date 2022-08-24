@@ -22,7 +22,6 @@ export const isNodeHealth = async () => {
 
   console.log(`GET ${endpoint}`)
   
-
   try {
     const headers = { "Accept-Encoding": "deflate" }
     const response = await axios.get(endpoint, {headers})
@@ -33,8 +32,7 @@ export const isNodeHealth = async () => {
       return false
     }
   } catch (error: any) {
-    console.error(`Error: ${error.message}`)
-    return false
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -48,9 +46,7 @@ export const getNodeInfo = async ()  => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -64,9 +60,7 @@ export const getTips = async () => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -172,9 +166,7 @@ export const submitBlock = async (receiverCount: number, amount: number, nodeInf
     
     return {blockId: response.data.blockId, outputIds: senderOutputIds}
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -188,9 +180,7 @@ export const getBlockById = async (blockId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -204,9 +194,7 @@ export const getBlockMetaDataById = async (blockId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -220,9 +208,7 @@ export const getOutputById = async (outputId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -236,9 +222,7 @@ export const getOutputMetadataById = async (outputId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -252,9 +236,7 @@ export const getReceipts = async () => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -268,9 +250,7 @@ export const getReceiptsByIndex = async (index: number) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -284,9 +264,7 @@ export const getTreasury = async () => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -300,9 +278,7 @@ export const getMilestoneById = async (milestoneId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -317,9 +293,7 @@ export const getMilestoneByIndex = async (index: number) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -333,9 +307,7 @@ export const getUTXOChangeByMilestoneId = async (milestoneId: string) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
@@ -349,9 +321,7 @@ export const getUTXOChangeByMilestoneIndex = async (index: number) => {
 
     return response.data
   } catch (error: any) {
-    console.error(error.message)
-
-    return null
+    throw new Error(`error: ${error.message}\nreason: ${JSON.stringify(error.response.data, null, 4)}`)
   }
 }
 
