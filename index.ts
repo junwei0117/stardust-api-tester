@@ -1,7 +1,7 @@
 import * as core from "./src/apis/core"
 import * as indexer from "./src/apis/indexer"
 import * as explorer from "./src/apis/explorer"
-import { SPAMMER_ADDRESS, ENABLE_EXPLORER } from "./src/config"
+import { SPAMMER_ADDRESS, ENABLE_EXPLORER, ENABLE_INDEXER, ENABLE_CORE } from "./src/config"
 import { Converter } from "@iota/util.js";
 import { ALIAS_ADDRESS_TYPE, Bech32Helper, TransactionHelper } from "@iota/iota.js";
 import { logger } from "./src/logger"
@@ -111,8 +111,8 @@ const doExploreAPITest = async () => {
 
 const run = async () => {
   try {
-    doCoreAPITest()
-    doIndexerAPITest()
+    ENABLE_CORE? doCoreAPITest() : null
+    ENABLE_INDEXER ? doIndexerAPITest() : null
     ENABLE_EXPLORER ? doExploreAPITest() : null
   } catch {}   
 }
